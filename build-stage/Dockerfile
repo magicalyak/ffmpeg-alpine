@@ -1,5 +1,5 @@
-FROM        denismakogon/ffmpeg-alpine:4.0-dependencies AS build-stage
-FROM        alpine:3.7
+FROM        magicalyak/ffmpeg-alpine:4.4-dependencies AS build-stage
+FROM        alpine:3
 WORKDIR     /tmp/workdir
 
 ARG        PKG_CONFIG_PATH=/usr/local/ffmpeg/pkgconfig

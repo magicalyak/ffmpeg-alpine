@@ -5,8 +5,8 @@ However with a lot changes like:
 
  - no more single Dockerfile (3 image layers: dependencies, build-stage, runtime)
  - no more forced multi-stage builds except those cases when final stage is vanilla operating system
- - alpine 3.7
- - ffmpeg 4.0 by default
+ - alpine 3.11
+ - ffmpeg 4.3 by default
 
 ## Dependencies
 
@@ -31,7 +31,7 @@ Image size: 69.5MB at minimum
 
 In order to get all necessary ffmpeg pieces you need to create a Dockerfile with the following instructions:
 ```dockerfile
-FROM denismakogon/ffmpeg-alpine:4.0-runtime as build-stage
+FROM magicalyak/ffmpeg-alpine:4.4-runtime as build-stage
 FROM <your-final-stage-image>
 
 COPY --from=build-stage /tmp/fakeroot/bin /usr/local/bin

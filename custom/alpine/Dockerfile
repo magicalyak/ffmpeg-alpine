@@ -1,8 +1,8 @@
-FROM alpine:3.7
+FROM alpine:3.12
 
 LABEL maintainer="Denis Makogon. mail: lildee1991@gmail.com"
 
-ENV FFMPEG_VERSION=4.0
+ENV FFMPEG_VERSION=4.4
 
 ENV FFMPEG_CORE="bash \
                  tzdata \

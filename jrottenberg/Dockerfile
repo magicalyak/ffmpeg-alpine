@@ -4,9 +4,37 @@
 #
 #
 
-FROM        alpine:3.12 AS base
+FROM    alpine:3.14 AS base
 
-RUN         apk add --no-cache --update libgcc libstdc++ ca-certificates libcrypto1.1 libssl1.1 libgomp expat git
+RUN   	apk upgrade --update \
+        && apk add --no-cache --update \
+                autoconf \
+                automake \
+                alpine-sdk \
+                ca-certificates \
+                cmake \
+                coreutils \
+                cunit-dev \
+                curl \
+                dos2unix \
+                libtool \
+                linux-headers \
+                nasm \
+                python3 \
+                tzdata \
+                unzip \
+                wget \
+                yasm \
+                # originals
+                libgcc \
+                libstdc++ \
+                ca-certificates \
+                libcrypto1.1 \
+                libssl1.1 \
+                libgomp \
+                expat \
+                git \
+        && rm -rf /tmp/* /var/tmp/*
 
 FROM        base AS build
 
@@ -14,6 +42,7 @@ WORKDIR     /tmp/workdir
 
 ENV         FFMPEG_VERSION=4.4 \
             AOM_VERSION=v1.0.0 \
+            AVISYNTHPLUS_VERSION=3.6.1 \
             FDKAAC_VERSION=0.1.5 \
             FONTCONFIG_VERSION=2.12.4 \
             FREETYPE_VERSION=2.10.4 \
@@ -41,11 +70,17 @@ ENV         FFMPEG_VERSION=4.4 \
             XVID_VERSION=1.3.4 \
             LIBXML2_VERSION=2.9.10 \
             LIBBLURAY_VERSION=1.1.2 \
-            LIBZMQ_VERSION=4.3.2 \
+            LIBBS2B_VERSION=3.1.0 \
+            LIBZMQ_VERSION=4.3.4 \
             LIBSRT_VERSION=1.4.1 \
             LIBARIBB24_VERSION=1.0.3 \
             LIBPNG_VERSION=1.6.9 \
             LIBVMAF_VERSION=2.1.1 \
+            LIBMFX_VERSION=20.1.1 \
+            LIBOPENMPT_VERSION=0.5.0 \
+            LIBMYSOFA_VERSION=1.1 \
+            TWOLAME_VERSION=0.4.0 \
+            CODEC2_VERSION=0.9.2 \
             SRC=/usr/local
 
 ARG         FREETYPE_SHA256SUM="5eab795ebb23ac77001cfb68b7d4d50b5d6c7469247b0b01b2c953269f658dac freetype-2.10.4.tar.gz"
@@ -59,15 +94,16 @@ ARG         VORBIS_SHA256SUM="6efbcecdd3e5dfbf090341b485da9d176eb250d893e3eb378c
 ARG         XVID_SHA256SUM="4e9fd62728885855bc5007fe1be58df42e5e274497591fec37249e1052ae316f xvidcore-1.3.4.tar.gz"
 ARG         LIBXML2_SHA256SUM="f07dab13bf42d2b8db80620cce7419b3b87827cc937c8bb20fe13b8571ee9501  libxml2-v2.9.10.tar.gz"
 ARG         LIBBLURAY_SHA256SUM="a3dd452239b100dc9da0d01b30e1692693e2a332a7d29917bf84bb10ea7c0b42 libbluray-1.1.2.tar.bz2"
-ARG         LIBZMQ_SHA256SUM="02ecc88466ae38cf2c8d79f09cfd2675ba299a439680b64ade733e26a349edeb v4.3.2.tar.gz"
+ARG         LIBZMQ_SHA256SUM="0ff5a531c9ffaf0dfdc7dc78d13d1383088f454896d252934c429b2554d10559 v4.3.4.tar.gz"
 ARG         LIBARIBB24_SHA256SUM="f61560738926e57f9173510389634d8c06cabedfa857db4b28fb7704707ff128 v1.0.3.tar.gz"
 ARG         LIBVMAF_SHA256SUM="e7fc00ae1322a7eccfcf6d4f1cdf9c67eec8058709887c8c6c3795c617326f77 v2.1.1.tar.gz"
 
-ARG         LD_LIBRARY_PATH=/usr/local/lib
+
+ARG         LD_LIBRARY_PATH="/opt/intel/mediasdk/lib64:/opt/ffmpeg/lib64:/opt/ffmpeg/lib"
 ARG         MAKEFLAGS="-j2"
-ARG         PKG_CONFIG_PATH="/usr/local/share/pkgconfig:/usr/local/lib/pkgconfig:/usr/local/lib64/pkgconfig"
-ARG         PREFIX=/usr/local
-ARG         LD_LIBRARY_PATH="/usr/local/lib:/usr/local/lib64"
+ARG         PKG_CONFIG_PATH="/opt/ffmpeg/share/pkgconfig:/opt/ffmpeg/lib/pkgconfig:/opt/ffmpeg/lib64/pkgconfig"
+ARG         PREFIX=/opt/ffmpeg
+ARG         LD_LIBRARY_PATH="/opt/ffmpeg/lib:/opt/ffmpeg/lib64"
 
 
 RUN     buildDeps="autoconf \
@@ -91,8 +127,26 @@ RUN     buildDeps="autoconf \
                    yasm \
                    nasm \
                    zlib-dev \
-                   expat-dev" && \
+                   expat-dev"  && \
         apk add --no-cache --update ${buildDeps}
+
+RUN echo http://dl-2.alpinelinux.org/alpine/edge/testing >> /etc/apk/repositories
+RUN apk add --no-cache --update-cache \
+	libgme-dev \
+	lilv-dev \
+	rubberband-dev \
+	shine \
+	vidstab-dev \
+	\
+	libva-vdpau-driver
+
+RUN echo http://dl-2.alpinelinux.org/alpine/edge/community >> /etc/apk/repositories
+RUN apk add --no-cache --update-cache \
+	ladspa-dev \
+#	libiec61883-dev
+	\
+	intel-media-driver
+
 ## libvmaf https://github.com/Netflix/vmaf
 RUN \
         if which meson || false; then \
@@ -460,7 +514,7 @@ RUN \
         ./autogen.sh && \
         ./configure --prefix="${PREFIX}" && \
         make && \
-        make check && \
+        # make check && \
         make install && \
         rm -rf ${DIR}
 
@@ -501,3 +555,270 @@ RUN \
         make && \
         make install && \
         rm -rf ${DIR}
+
+### NEW STUFF ###
+RUN     baseDeps="aom-dev \
+                chromaprint-dev \
+                cunit-dev \
+                fdk-aac-dev \
+                ffmpeg-libs \
+                ffmpeg-dev \
+                flite-dev \
+                fontconfig-dev \
+                freetype-dev \
+                frei0r-plugins-dev \
+                fribidi-dev \
+                gsm-dev \
+                jack-dev \
+                lame-dev \
+                libass-dev \
+                libbluray-dev \
+                libcaca-dev \
+                libcdio-dev \
+                libcdio-paranoia-dev \
+                libdc1394-dev \
+                libdrm-dev \
+                libogg-dev \
+                libpng-dev \
+                librsvg-dev \
+                libsndfile-dev \
+                libssh-dev \
+                libtheora-dev \
+                libvorbis-dev \
+                libvpx-dev \
+                libwebp-dev \
+                libxau-dev \
+                libxcb-dev \
+                libxml2-dev \
+                mesa-dev \
+                mpg123-dev \
+                openjpeg-dev \
+                openal-soft-dev \
+                openssl-dev \
+                opus-dev \
+                pulseaudio-dev \
+                sdl2-dev \
+                snappy-dev \
+                soxr-dev \
+                speex-dev \
+                util-linux-dev \
+                wavpack-dev \
+                x264-dev \
+                x265-dev \
+                xvidcore-dev \
+                zeromq-dev \
+                \
+                libva-dev \
+                libva-intel-driver \
+                libvdpau-dev \
+                mesa-va-gallium \
+                mesa-vdpau-gallium" && \
+        apk add --no-cache --update ${baseDeps}
+
+# AviSynth+ https://github.com/AviSynth/AviSynthPlus
+RUN     \
+        DIR=/tmp/AviSynthPlus && \
+        mkdir -p ${DIR} && \
+        cd ${DIR} && \
+        curl -fsSL https://github.com/AviSynth/AviSynthPlus/archive/v${AVISYNTHPLUS_VERSION}.tar.gz | \
+        tar -xz --strip-components=1 && \
+	mkdir -p ./avisynth-build && \
+        cd ./avisynth-build && \
+	cmake -DCMAKE_INSTALL_PREFIX="${PREFIX}" -DCMAKE_BUILD_TYPE=Release ../ -DHEADERS_ONLY:bool=on && \
+	make install && \
+        rm -rf ${DIR}
+
+## bs2b http://bs2b.sourceforge.net/
+RUN     \
+        DIR=/tmp/bs2b && \
+        mkdir -p ${DIR} && \
+        cd ${DIR} && \
+	curl -fsSL https://downloads.sourceforge.net/project/bs2b/libbs2b/${LIBBS2B_VERSION}/libbs2b-${LIBBS2B_VERSION}.tar.gz | \
+        tar -xz --strip-components=1 && \
+	cd ./build-aux && \
+	curl -fsSL 'http://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.guess;hb=HEAD' -o config.guess && \
+	curl -fsSL 'http://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=HEAD' -o config.sub && \
+	cd ../ && \
+	./configure --prefix="${PREFIX}" --disable-static --enable-shared && \
+	make && \
+	make install && \
+        rm -rf ${DIR}
+
+## Codec 2 https://github.com/drowe67/codec2/
+RUN \
+        DIR=/tmp/codec2 && \
+        mkdir -p ${DIR} && \
+        cd ${DIR} && \
+	curl -fsSL https://github.com/drowe67/codec2/archive/v${CODEC2_VERSION}.tar.gz | \
+        tar -xz --strip-components=1 && \
+	mkdir -p ./codec2-build && \
+        cd ./codec2-build && \
+	cmake -DCMAKE_INSTALL_PREFIX="${PREFIX}" -DCMAKE_BUILD_TYPE=Release ../ && \
+	make install && \
+        rm -rf ${DIR}
+
+## libmysofa https://github.com/hoene/libmysofa/
+RUN \
+        DIR=/tmp/libmysofa && \
+        mkdir -p ${DIR} && \
+        cd ${DIR} && \
+	curl -fsSL https://github.com/hoene/libmysofa/archive/v${LIBMYSOFA_VERSION}.tar.gz | \
+        tar -xz --strip-components=1 && \
+	mkdir ./libmysofa-build && \
+        cd ./libmysofa-build && \
+	cmake -DCMAKE_INSTALL_PREFIX="${PREFIX}" -DCMAKE_BUILD_TYPE=Release ../ && \
+	make install && \
+        rm -rf ${DIR}
+
+## TwoLAME https://www.twolame.org/
+RUN \
+        DIR=/tmp/twolame && \
+        mkdir -p ${DIR} && \
+        cd ${DIR} && \
+	curl -fsSL https://downloads.sourceforge.net/twolame/twolame-${TWOLAME_VERSION}.tar.gz | \
+        tar -xz --strip-components=1 && \
+	./configure --prefix="${PREFIX}" --disable-static --enable-shared && \
+	make && \
+	make install && \
+        rm -rf ${DIR}
+
+# libopenmpt - libportaudio http://www.portaudio.com/
+RUN \
+        DIR=/tmp/libportaudio && \
+        mkdir -p ${DIR} && \
+        cd ${DIR} && \
+	curl -fsSL http://www.portaudio.com/archives/pa_snapshot.tgz | \
+	tar -xz --strip-components=1 && \
+	./configure --prefix="${PREFIX}" --disable-static --enable-shared && \
+	make && \
+	make install && \
+	cd ./bindings/cpp && \
+	./configure --prefix="${PREFIX}" --disable-static --enable-shared && \
+	make && \
+	make install && \
+        rm -rf ${DIR}
+
+# libopenmpt - libopenmpt https://lib.openmpt.org/libopenmpt/
+RUN \
+        DIR=/tmp/libopenmpt && \
+        mkdir -p ${DIR} && \
+        cd ${DIR} && \
+	curl -fsSL https://lib.openmpt.org/files/libopenmpt/src/libopenmpt-${LIBOPENMPT_VERSION}+release.autotools.tar.gz | \
+        tar -xz --strip-components=1 && \
+	./configure --prefix="${PREFIX}" --disable-static --enable-shared && \
+	make && \
+	make install && \
+        rm -rf ${DIR}
+
+# Intel-Media-SDK https://github.com/Intel-Media-SDK/MediaSDK/
+RUN \
+        DIR=/tmp/libmfx && \
+        mkdir -p ${DIR} && \
+        cd ${DIR} && \
+	curl -fsSL https://github.com/Intel-Media-SDK/MediaSDK/archive/intel-mediasdk-${LIBMFX_VERSION}.tar.gz | \
+        tar -xz --strip-components=1 && \
+	mkdir ./libmfx-build && \
+        cd ./libmfx-build && \
+	cmake -DCMAKE_INSTALL_PREFIX="${PREFIX}" -DCMAKE_BUILD_TYPE=MinSizeRel ../ && \
+	make && \
+	make install && \
+        rm -rf ${DIR}
+
+## ffmpeg https://ffmpeg.org/
+RUN  \
+        DIR=/tmp/ffmpeg && \
+        mkdir -p ${DIR} && \
+        cd ${DIR} && \
+        curl -sLO https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.bz2 && \
+        tar -jx --strip-components=1 -f ffmpeg-${FFMPEG_VERSION}.tar.bz2
+
+ENV CFLAGS="-O2 -pipe -march=x86-64 -mtune=generic"
+ENV CXXFLAGS="-O2 -pipe -march=x86-64 -mtune=generic"
+
+RUN \
+        DIR=/tmp/ffmpeg && \
+        mkdir -p ${DIR} && \
+        cd ${DIR} && \
+        ./configure \
+                --disable-debug \
+                --disable-doc \
+                --disable-ffplay \
+                --enable-shared \
+                --enable-avresample \
+                --enable-libopencore-amrnb \
+                --enable-libopencore-amrwb \
+                --enable-gpl \
+                --enable-libass \
+                --enable-fontconfig \
+                --enable-libfreetype \
+                --enable-libvidstab \
+                --enable-libmp3lame \
+                --enable-libopus \
+                --enable-libtheora \
+                --enable-libvorbis \
+                --enable-libvpx \
+                --enable-libwebp \
+                --enable-libxcb \
+                --enable-libx265 \
+                --enable-libxvid \
+                --enable-libx264 \
+                --enable-nonfree \
+                --enable-openssl \
+                --enable-libfdk_aac \
+                --enable-postproc \
+                --enable-small \
+                --enable-version3 \
+                --enable-libbluray \
+                --enable-libzmq \
+                --extra-libs=-ldl \
+                --prefix="${PREFIX}" \
+                --enable-libopenjpeg \
+                --enable-libkvazaar \
+                --enable-libaom \
+                --extra-libs="-lpthread -lm" \
+                --enable-libsrt \
+                --enable-libaribb24 \
+                --extra-cflags="-I${PREFIX}/include ${CFLAGS}" \
+                --extra-cxxflags="-I${PREFIX}/include ${CXXFLAGS}" \
+                --extra-ldflags="-L${PREFIX}/lib" \
+                \
+                --enable-lbmfx \
+                --enable-vaapi \
+                --enable-vdpau \
+                && \
+        make && \
+        make install && \
+        make tools/zmqsend && \
+        cp tools/zmqsend ${PREFIX}/bin/ && \
+        make distclean && \
+        hash -r && \
+        cd tools && \
+        make qt-faststart && \
+        cp qt-faststart ${PREFIX}/bin/
+
+
+RUN \
+    ldd ${PREFIX}/bin/ffmpeg | grep opt/ffmpeg | cut -d ' ' -f 3 | xargs -i cp {} /usr/local/lib/ && \
+    for lib in /usr/local/lib/*.so.*; do ln -s "${lib##*/}" "${lib%%.so.*}".so; done && \
+    cp ${PREFIX}/bin/* /usr/local/bin/ && \
+    cp -r ${PREFIX}/share/ffmpeg /usr/local/share/ && \
+    LD_LIBRARY_PATH=/usr/local/lib ffmpeg -buildconf && \
+    mkdir -p /usr/local/include && \
+    cp -r ${PREFIX}/include/libav* ${PREFIX}/include/libpostproc ${PREFIX}/include/libsw* /usr/local/include && \
+    mkdir -p /usr/local/lib/pkgconfig && \
+    for pc in ${PREFIX}/lib/pkgconfig/libav*.pc ${PREFIX}/lib/pkgconfig/libpostproc.pc ${PREFIX}/lib/pkgconfig/libsw*.pc; do \
+        sed "s:${PREFIX}:/usr/local:g" <"$pc" >/usr/local/lib/pkgconfig/"${pc##*/}"; \
+    done
+
+### Release Stage
+FROM        base AS release
+
+ENV         LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64
+
+CMD         ["--help"]
+ENTRYPOINT  ["ffmpeg"]
+
+COPY --from=build /usr/local /usr/local
+
+# Let's make sure the app built correctly
+# Convenient to verify on https://hub.docker.com/r/jrottenberg/ffmpeg/builds/ console output
