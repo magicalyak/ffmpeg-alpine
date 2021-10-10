@@ -52,7 +52,7 @@ ENV         FFMPEG_VERSION=4.4 \
             LIBASS_VERSION=0.13.7 \
             LIBPTHREAD_STUBS_VERSION=0.4 \
             LIBVIDSTAB_VERSION=1.1.0 \
-            LIBXCB_VERSION=1.13.1 \
+            LIBXCB_VERSION=1.14 \
             XCBPROTO_VERSION=1.13 \
             OGG_VERSION=1.3.2 \
             OPENCOREAMR_VERSION=0.1.5 \
@@ -129,23 +129,6 @@ RUN     buildDeps="autoconf \
                    zlib-dev \
                    expat-dev"  && \
         apk add --no-cache --update ${buildDeps}
-
-RUN echo http://dl-2.alpinelinux.org/alpine/edge/testing >> /etc/apk/repositories
-RUN apk add --no-cache --update-cache \
-	libgme-dev \
-	lilv-dev \
-	rubberband-dev \
-	shine \
-	vidstab-dev \
-	\
-	libva-vdpau-driver
-
-RUN echo http://dl-2.alpinelinux.org/alpine/edge/community >> /etc/apk/repositories
-RUN apk add --no-cache --update-cache \
-	ladspa-dev \
-#	libiec61883-dev
-	\
-	intel-media-driver
 
 ## libvmaf https://github.com/Netflix/vmaf
 RUN \
@@ -614,6 +597,23 @@ RUN     baseDeps="aom-dev \
                 mesa-va-gallium \
                 mesa-vdpau-gallium" && \
         apk add --no-cache --update ${baseDeps}
+
+RUN echo http://dl-2.alpinelinux.org/alpine/edge/testing >> /etc/apk/repositories
+RUN apk add --no-cache --update-cache \
+	libgme-dev \
+	lilv-dev \
+	rubberband-dev \
+	shine \
+	vidstab-dev \
+	\
+	libva-vdpau-driver
+
+RUN echo http://dl-2.alpinelinux.org/alpine/edge/community >> /etc/apk/repositories
+RUN apk add --no-cache --update-cache \
+	ladspa-dev \
+#	libiec61883-dev
+	\
+	intel-media-driver
 
 # AviSynth+ https://github.com/AviSynth/AviSynthPlus
 RUN     \
